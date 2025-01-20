@@ -90,7 +90,7 @@ type Client struct {
 	tout time.Duration
 }
 
-func NewClient(base string, opts ...Option) (*Client, error) {
+func NewClient(opts ...Option) (*Client, error) {
 	cli := &Client{
 		log: slog.Default(),
 		con: &http.Client{},

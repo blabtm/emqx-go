@@ -10,33 +10,33 @@ import (
 
 type Hook struct {
 	Name      string `json:"name"`
-	Enable    bool   `json:"enable,omitempty"`
+	Enable    bool   `json:"enable"`
 	Addr      string `json:"url"`
 	Timeout   string `json:"request_timeout,omitempty"`
 	Action    string `json:"failed_action,omitempty"`
 	Reconnect string `json:"auto_reconnect,omitempty"`
-	PoolSize  int    `json:"pool_size,omitempty"`
+	PoolSize  int    `json:"pool_size"`
 }
 
-func (c *Client) HookUpdate(ctx context.Context, h *Hook) error {
-	pay, err := json.Marshal(h)
+func (c *Client) HookUpdate(ctx context.Context, hook *Hook) error {
+	pay, err := json.Marshal(hook)
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
-	url := c.Base + "/exhooks/" + h.Name
+	url := c.Base + "/exhooks/" + hook.Name
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(pay))
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	res, err := c.Do(ctx, req)
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
 	defer res.Body.Close()
@@ -45,7 +45,7 @@ func (c *Client) HookUpdate(ctx context.Context, h *Hook) error {
 		var buf bytes.Buffer
 
 		if _, err := buf.ReadFrom(res.Body); err != nil {
-			return fmt.Errorf("res: %w", err)
+			return err
 		}
 
 		return fmt.Errorf("api: %v", buf.String())
@@ -59,13 +59,13 @@ func (c *Client) HookGet(ctx context.Context, name string) (*Hook, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("req: %w", err)
+		return nil, err
 	}
 
 	res, err := c.Do(ctx, req)
 
 	if err != nil {
-		return nil, fmt.Errorf("req: %w", err)
+		return nil, err
 	}
 
 	defer res.Body.Close()
@@ -74,7 +74,7 @@ func (c *Client) HookGet(ctx context.Context, name string) (*Hook, error) {
 	pay := &Hook{}
 
 	if _, err := buf.ReadFrom(res.Body); err != nil {
-		return nil, fmt.Errorf("res: %w", err)
+		return nil, err
 	}
 
 	if res.StatusCode != 200 {
@@ -82,31 +82,31 @@ func (c *Client) HookGet(ctx context.Context, name string) (*Hook, error) {
 	}
 
 	if err := json.Unmarshal(buf.Bytes(), pay); err != nil {
-		return nil, fmt.Errorf("res: %w", err)
+		return nil, err
 	}
 
 	return pay, nil
 }
 
-func (c *Client) HookCreate(ctx context.Context, h *Hook) error {
-	pay, err := json.Marshal(h)
+func (c *Client) HookCreate(ctx context.Context, hook *Hook) error {
+	pay, err := json.Marshal(hook)
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
 	url := c.Base + "/exhooks"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(pay))
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	res, err := c.Do(ctx, req)
 
 	if err != nil {
-		return fmt.Errorf("req: %w", err)
+		return err
 	}
 
 	defer res.Body.Close()
@@ -115,7 +115,7 @@ func (c *Client) HookCreate(ctx context.Context, h *Hook) error {
 		var buf bytes.Buffer
 
 		if _, err := buf.ReadFrom(res.Body); err != nil {
-			return fmt.Errorf("res: %w", err)
+			return err
 		}
 
 		return fmt.Errorf("api: %v", buf.String())
