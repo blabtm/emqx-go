@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -41,14 +42,13 @@ func (cli *Client) GatewayUpdate(ctx context.Context, gtw Gateway) error {
 		return err
 	}
 
-	url := cli.Base + "/gateways/" + gtw.Type()
+	url := fmt.Sprintf("%s/gateways/%s", cli.Base, gtw.Type())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(pay))
 
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	res, err := cli.Do(ctx, req)
 
 	if err != nil {
@@ -57,15 +57,15 @@ func (cli *Client) GatewayUpdate(ctx context.Context, gtw Gateway) error {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 204 {
-		var buf bytes.Buffer
-
-		if _, err := buf.ReadFrom(res.Body); err != nil {
-			return err
-		}
-
-		return fmt.Errorf("api: %v", buf.String())
+	if res.StatusCode == 204 {
+		return nil
 	}
 
-	return nil
+	msg, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		return fmt.Errorf("%w: [could not read response] %v", fmt.Errorf(res.Status), err)
+	}
+
+	return fmt.Errorf("%w: %v", fmt.Errorf(res.Status), msg)
 }

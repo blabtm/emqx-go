@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 )
 
 const (
 	base = "http://%s:%d/api/v5"
 
-	DefaultHost    = "localhost"
-	DefaultPort    = 18083
-	DefaultTimeout = 5 * time.Second
+	DefaultHost  = "localhost"
+	DefaultPort  = 18083
+	DefaultDelay = 0
 )
 
 type Option func(*Client) error
@@ -47,9 +46,9 @@ func WithPass(p string) Option {
 	}
 }
 
-func WithTimeout(t time.Duration) Option {
+func WithDelay(t time.Duration) Option {
 	return func(c *Client) error {
-		c.tout = t
+		c.wait = t
 		return nil
 	}
 }
@@ -81,13 +80,12 @@ type Client struct {
 
 	log *slog.Logger
 	con *http.Client
-	mux sync.Mutex
 
 	host string
 	port int
 	user string
 	pass string
-	tout time.Duration
+	wait time.Duration
 }
 
 func NewClient(opts ...Option) (*Client, error) {
@@ -97,7 +95,7 @@ func NewClient(opts ...Option) (*Client, error) {
 
 		host: DefaultHost,
 		port: DefaultPort,
-		tout: DefaultTimeout,
+		wait: DefaultDelay,
 	}
 
 	for _, opt := range opts {
@@ -120,8 +118,7 @@ func (c *Client) Port() int {
 }
 
 func (cli *Client) Do(ctx context.Context, req *http.Request) (res *http.Response, err error) {
-	cli.mux.Lock()
-	defer cli.mux.Unlock()
+	req.Header.Set("Content-Type", "application/json")
 
 	if cli.user != "" {
 		req.SetBasicAuth(cli.user, cli.pass)
@@ -140,7 +137,7 @@ func (cli *Client) Do(ctx context.Context, req *http.Request) (res *http.Respons
 			break
 		}
 
-		time.Sleep(cli.tout)
+		time.Sleep(cli.wait)
 	}
 
 	return

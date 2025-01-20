@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -25,14 +26,13 @@ func (c *Client) HookUpdate(ctx context.Context, hook *Hook) error {
 		return err
 	}
 
-	url := c.Base + "/exhooks/" + hook.Name
+	url := fmt.Sprintf("%s/exhooks/%s", c.Base, hook.Name)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(pay))
 
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	res, err := c.Do(ctx, req)
 
 	if err != nil {
@@ -41,17 +41,17 @@ func (c *Client) HookUpdate(ctx context.Context, hook *Hook) error {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		var buf bytes.Buffer
-
-		if _, err := buf.ReadFrom(res.Body); err != nil {
-			return err
-		}
-
-		return fmt.Errorf("api: %v", buf.String())
+	if res.StatusCode == 200 {
+		return nil
 	}
 
-	return nil
+	msg, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		return fmt.Errorf("%w: [could not read response] %v", fmt.Errorf(res.Status), err)
+	}
+
+	return fmt.Errorf("%w: %v", fmt.Errorf(res.Status), string(msg))
 }
 
 func (c *Client) HookGet(ctx context.Context, name string) (*Hook, error) {
@@ -67,25 +67,25 @@ func (c *Client) HookGet(ctx context.Context, name string) (*Hook, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer res.Body.Close()
 
-	buf := bytes.Buffer{}
-	pay := &Hook{}
+	pay, err := io.ReadAll(res.Body)
 
-	if _, err := buf.ReadFrom(res.Body); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("%w: [could not read response] %v", fmt.Errorf(res.Status), err)
 	}
 
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("api: %v", buf.String())
+	if res.StatusCode == 200 {
+		hook := &Hook{}
+
+		if err := json.Unmarshal(pay, hook); err != nil {
+			return nil, fmt.Errorf("%w: [could not parse response] %v", fmt.Errorf(res.Status), err)
+		}
+
+		return hook, nil
 	}
 
-	if err := json.Unmarshal(buf.Bytes(), pay); err != nil {
-		return nil, err
-	}
-
-	return pay, nil
+	return nil, fmt.Errorf("%w: %v", fmt.Errorf(res.Status), string(pay))
 }
 
 func (c *Client) HookCreate(ctx context.Context, hook *Hook) error {
@@ -102,7 +102,6 @@ func (c *Client) HookCreate(ctx context.Context, hook *Hook) error {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	res, err := c.Do(ctx, req)
 
 	if err != nil {
@@ -111,16 +110,16 @@ func (c *Client) HookCreate(ctx context.Context, hook *Hook) error {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		var buf bytes.Buffer
-
-		if _, err := buf.ReadFrom(res.Body); err != nil {
-			return err
-		}
-
-		return fmt.Errorf("api: %v", buf.String())
+	if res.StatusCode == 200 {
+		return nil
 	}
 
-	return nil
+	msg, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		return fmt.Errorf("%w: [could not read response] %v", fmt.Errorf(res.Status), err)
+	}
+
+	return fmt.Errorf("%w: %v", fmt.Errorf(res.Status), string(msg))
 
 }
